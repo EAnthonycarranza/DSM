@@ -18,7 +18,6 @@ const Notifications = () => {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
-      console.log('Fetched Notifications:', data); // Add this line
       setNotifications(data);
       setUnreadCount(data.filter(notification => !notification.isRead).length);
     };
