@@ -6,6 +6,7 @@ import PersonalInfoForm from './components/PersonalInfoForm';
 import Register from './components/Register';
 import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
+import UserDetails from './components/UserDetails';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path='/register' element={<Register/>}/>
         <Route path='/adminlogin' element={<AdminLogin/>}/>
         <Route path='/admindashboard' element={<AdminDashboard/>}/>
+        <Route path="/admindashboard/:id" element={<UserDetails />} />
       </Routes>
     </Router>
   );
