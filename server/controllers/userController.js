@@ -3,11 +3,18 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const PersonalInfo = require('../models/PersonalInfo');
 
+// Function to generate JWT token
+const generateToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
+        expiresIn: '30d',
+    });
+};
+
 // @desc Register a new user
 // @route POST /api/users
 // @access Public
 const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
         res.status(400);
@@ -21,17 +28,30 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new Error('User already exists');
     }
 
-    const user = await User.create({
-        name,
+    // Create the user
+    const user = new User({
         email,
-        password,
+        password
     });
 
-    if (user) {
+    // Create a new PersonalInfo document and link it to the user
+    const personalInfo = new PersonalInfo({ user: user._id });
+    user.personalInfo = personalInfo._id;
+
+    // Save both documents
+    await personalInfo.save();
+    const createdUser = await user.save();
+
+    if (createdUser) {
+        const token = generateToken(createdUser._id);
         res.status(201).json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
+            _id: createdUser._id,
+            email: createdUser.email,
+            personalInfo: createdUser.personalInfo, // Include personalInfo ID in the response
+            token, // Include the token in the response
+            createdAt: createdUser.createdAt,
+            updatedAt: createdUser.updatedAt,
+            __v: createdUser.__v
         });
     } else {
         res.status(400);
@@ -44,26 +64,24 @@ const registerUser = asyncHandler(async (req, res) => {
 // @access Public
 const authUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-  
+
     console.log('Login attempt:', { email, password }); // Log the login attempt
-  
+
     const user = await User.findOne({ email });
-  
+
     if (user && (await user.matchPassword(password))) {
-      console.log('Login successful for user:', user); // Log successful login
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id),
-      });
+        console.log('Login successful for user:', user); // Log successful login
+        res.json({
+            _id: user._id,
+            email: user.email,
+            token: generateToken(user._id),
+        });
     } else {
-      console.log('Invalid email or password'); // Log invalid login attempt
-      res.status(401);
-      throw new Error('Invalid email or password');
+        console.log('Invalid email or password'); // Log invalid login attempt
+        res.status(401);
+        throw new Error('Invalid email or password');
     }
-  });
-  
+});
 
 // @desc Get user profile
 // @route GET /api/users/profile
@@ -77,12 +95,16 @@ const getUserProfile = asyncHandler(async (req, res) => {
             name: user.name,
             email: user.email,
             personalInfo: user.personalInfo,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            __v: user.__v
         });
     } else {
         res.status(404);
         throw new Error('User not found');
     }
 });
+
 
 // @desc Update user profile
 // @route PUT /api/users/profile
@@ -104,6 +126,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
             _id: updatedUser._id,
             name: updatedUser.name,
             email: updatedUser.email,
+            personalInfo: updatedUser.personalInfo,
+            createdAt: updatedUser.createdAt,
+            updatedAt: updatedUser.updatedAt,
+            __v: updatedUser.__v
         });
     } else {
         res.status(404);
@@ -118,27 +144,31 @@ const updatePersonalInfo = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (user) {
-        let personalInfo = await PersonalInfo.findOne({ user: req.user._id });
+        try {
+            let personalInfo = await PersonalInfo.findOne({ user: req.user._id });
 
-        if (!personalInfo) {
-            personalInfo = new PersonalInfo({ user: req.user._id, ...req.body });
-            await personalInfo.save();
-            user.personalInfo = personalInfo._id;
-            await user.save();
-        } else {
-            Object.assign(personalInfo, req.body);
-            await personalInfo.save();
+            if (!personalInfo) {
+                personalInfo = new PersonalInfo({ user: req.user._id, ...req.body });
+                await personalInfo.save();
+                user.personalInfo = personalInfo._id;
+                await user.save();
+            } else {
+                Object.assign(personalInfo, req.body);
+                await personalInfo.save();
+            }
+
+            console.log(`User ${req.user._id} updated their personal info: `, personalInfo);
+
+            res.json(personalInfo);
+        } catch (error) {
+            console.error('Error updating personal information:', error);
+            res.status(500).json({ message: 'Internal Server Error' });
         }
-
-        console.log(`User ${req.user._id} updated their personal info: `, personalInfo);
-
-        res.json(personalInfo);
     } else {
         res.status(404);
         throw new Error('User not found');
     }
 });
-
 
 // @desc Get personal information
 // @route GET /api/users/personalinfo
@@ -162,12 +192,78 @@ const getUsers = asyncHandler(async (req, res) => {
     res.json(users);
 });
 
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
-    });
-};
+// @desc Update user
+// @route PUT /api/users/:id
+// @access Private/Admin
+const updateUser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+  
+    if (user) {
+      user.name = req.body.name || user.name;
+      user.email = req.body.email || user.email;
+  
+      if (req.body.password) {
+        user.password = req.body.password;
+      }
+  
+      if (req.body.personalInfo) {
+        let personalInfo = await PersonalInfo.findById(user.personalInfo);
+  
+        if (!personalInfo) {
+          personalInfo = new PersonalInfo({ user: user._id, ...req.body.personalInfo });
+          await personalInfo.save();
+          user.personalInfo = personalInfo._id;
+        } else {
+          Object.assign(personalInfo, req.body.personalInfo);
+          await personalInfo.save();
+        }
+      }
+  
+      const updatedUser = await user.save();
+  
+      res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        personalInfo: updatedUser.personalInfo,
+      });
+    } else {
+      res.status(404);
+      throw new Error('User not found');
+    }
+  });
+  
+  // @desc Delete user
+  // @route DELETE /api/users/:id
+  // @access Private/Admin
+  const deleteUser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+  
+    if (user) {
+      await PersonalInfo.findByIdAndDelete(user.personalInfo);
+      await user.remove();
+      res.json({ message: 'User removed' });
+    } else {
+      res.status(404);
+      throw new Error('User not found');
+    }
+  });
+  
+// @desc Get user by ID
+// @route GET /api/users/:id
+// @access Private/Admin
+const getUser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id).populate('personalInfo');
 
+    if (user) {
+        res.json(user);
+    } else {
+        res.status(404);
+        throw new Error('User not found');
+    }
+});
+
+// Export the getUser function along with others
 module.exports = {
     registerUser,
     authUser,
@@ -176,4 +272,7 @@ module.exports = {
     updatePersonalInfo,
     getPersonalInfo,
     getUsers,
+    updateUser,
+    deleteUser,
+    getUser, // Add this line
 };

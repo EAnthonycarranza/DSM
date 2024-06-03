@@ -42,6 +42,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "path": "^0.12.7",
+    "socket.io": "^4.7.5",
     "square": "^35.0.0",
     "telnyx": "^1.26.1",
     "uuid": "^9.0.1"
