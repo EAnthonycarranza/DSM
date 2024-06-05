@@ -1,6 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const Note = require('../models/Note');
-const Notification = require('../models/Notification'); // Add this line
+const Notification = require('../models/Notification');
 
 // @desc Get notes by user ID
 // @route GET /api/notes/:userId
@@ -33,4 +33,41 @@ const addNote = asyncHandler(async (req, res) => {
     res.status(201).json(createdNote);
 });
 
-module.exports = { getNotes, addNote };
+// @desc Update a note
+// @route PUT /api/notes/:id
+// @access Private
+const updateNote = asyncHandler(async (req, res) => {
+    const note = await Note.findById(req.params.id);
+
+    if (note) {
+        note.content = req.body.content || note.content;
+
+        const updatedNote = await note.save();
+        res.json(updatedNote);
+    } else {
+        res.status(404);
+        throw new Error('Note not found');
+    }
+});
+
+// @desc Delete note
+// @route DELETE /api/notes/:id
+// @access Private
+const deleteNote = asyncHandler(async (req, res) => {
+    const note = await Note.findById(req.params.id);
+
+    if (note) {
+        await Note.deleteOne({ _id: req.params.id });
+        res.status(200).json({ message: 'Note removed' });
+    } else {
+        res.status(404);
+        throw new Error('Note not found');
+    }
+});
+
+module.exports = {
+    getNotes,
+    addNote,
+    updateNote,
+    deleteNote,
+};

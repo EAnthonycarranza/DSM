@@ -8,6 +8,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const noteRoutes = require('./routes/notesRoutes');
 const formRoutes = require('./routes/formRoutes');
+const eventRoutes = require('./routes/eventRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const connectDB = require('./config/db');
@@ -30,10 +31,16 @@ app.use(cors({
     origin: 'http://localhost:3001' // Replace with your frontend URL
 }));
 
+app.use((req, res, next) => {
+    req.app.set('socketio', io);
+    next();
+});
+
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/forms', formRoutes);
+app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 app.use(notFound);
