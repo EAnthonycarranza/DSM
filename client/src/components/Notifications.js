@@ -43,6 +43,9 @@ const Notifications = () => {
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
+    if (unreadCount > 0) {
+      setUnreadCount(0);
+    }
   };
 
   const handleMenuClose = () => {
@@ -65,6 +68,22 @@ const Notifications = () => {
     }
   };
 
+  const handleMarkAsUnread = async (id) => {
+    try {
+      await axios.put(`http://localhost:3000/api/notifications/${id}/unread`, {}, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      setNotifications((prev) =>
+        prev.map((notif) => (notif._id === id ? { ...notif, read: false } : notif))
+      );
+      setUnreadCount((prev) => prev + 1);
+    } catch (error) {
+      console.error('Error marking notification as unread:', error);
+    }
+  };
+
   const handleDelete = async (id) => {
     const notificationToDelete = notifications.find((notif) => notif._id === id);
     try {
@@ -83,6 +102,9 @@ const Notifications = () => {
   };
 
   const handleNotificationClick = (notification) => {
+    if (!notification.read) {
+      handleMarkAsRead(notification._id);
+    }
     const userId = notification.user && notification.user._id ? notification.user._id : notification.user;
     if (userId) {
       navigate(`/admindashboard/${userId}`);
@@ -152,6 +174,12 @@ const Notifications = () => {
                       e.stopPropagation();
                       handleDelete(notification._id);
                     }}>Clear</Button>
+                    {notification.read && (
+                      <Button onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsUnread(notification._id);
+                      }}>Mark As Unread</Button>
+                    )}
                   </Box>
                 </ListItem>
                 <Divider />
