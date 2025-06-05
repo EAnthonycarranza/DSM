@@ -24,11 +24,22 @@ const notificationSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    clicked: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+notificationSchema.methods.updateReadStatus = async function (isRead) {
+  this.read = isRead;
+  this.clicked = true;
+  await this.save();
+  return this;
+};
 
 const Notification = mongoose.model('Notification', notificationSchema);
 
