@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
+const Admin = require('./models/Admin'); // ✅ Correct (matches your file name)
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const noteRoutes = require('./routes/notesRoutes');
@@ -49,19 +50,18 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 
 const createAdminUser = async () => {
-    const email = 'admin@example.com';
-    const password = 'adminpassword123';
-    const name = 'Admin User';
+    const email = process.env.ADMIN_EMAIL || 'admin@example.com';
+    const password = process.env.ADMIN_PASSWORD || 'adminpassword123';
+    const name = process.env.ADMIN_NAME || 'Admin User';
 
     try {
         const adminExists = await Admin.findOne({ email });
 
         if (!adminExists) {
-            const hashedPassword = await bcrypt.hash(password, 10);
             const admin = new Admin({
                 name,
                 email,
-                password: hashedPassword,
+                password,
                 isAdmin: true,
             });
             await admin.save();
