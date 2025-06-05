@@ -94,8 +94,7 @@ const markAsRead = asyncHandler(async (req, res) => {
   const notification = await Notification.findById(req.params.id);
 
   if (notification) {
-    notification.read = true;
-    await notification.save();
+    await notification.updateReadStatus(true);
     res.json({ message: 'Notification marked as read' });
   } else {
     res.status(404).json({ message: 'Notification not found' });
@@ -109,8 +108,7 @@ const markAsUnread = asyncHandler(async (req, res) => {
   const notification = await Notification.findById(req.params.id);
 
   if (notification) {
-    notification.read = false;
-    await notification.save();
+    await notification.updateReadStatus(false);
     res.json({ message: 'Notification marked as unread' });
   } else {
     res.status(404).json({ message: 'Notification not found' });
