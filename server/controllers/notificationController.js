@@ -102,6 +102,21 @@ const markAsRead = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Mark notification as unread
+// @route   PUT /api/notifications/:id/unread
+// @access  Private
+const markAsUnread = asyncHandler(async (req, res) => {
+  const notification = await Notification.findById(req.params.id);
+
+  if (notification) {
+    notification.read = false;
+    await notification.save();
+    res.json({ message: 'Notification marked as unread' });
+  } else {
+    res.status(404).json({ message: 'Notification not found' });
+  }
+});
+
 // @desc    Delete notification
 // @route   DELETE /api/notifications/:id
 // @access  Private
@@ -129,5 +144,6 @@ module.exports = {
   getNotificationsWithUserId,
   getNotifications,
   markAsRead,
+  markAsUnread,
   deleteNotification,
 };
